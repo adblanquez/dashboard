@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de Campañas · Media Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --bg:#EDF0F5;
+    --paper:#FFFFFF;
+    --paper-alt:#E3E8F0;
+    --ink:#0F1B33;
+    --ink-muted:#5B6478;
+    --ink-faint:#8C93A4;
+    --line:#CBD3E0;
+    --line-strong:#0F1B33;
+    --coral:#FF5B3C;
+    --coral-soft:#FFE2D9;
+    --teal:#0F9E96;
+    --teal-soft:#D8F2EF;
+    --amber:#F2A626;
+    --radius:14px;
+    --shadow: 0 1px 0 rgba(15,27,51,.04), 0 8px 24px -12px rgba(15,27,51,.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(180deg, rgba(15,27,51,.03) 0px, transparent 1px) 0 0/100% 32px,
+      var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .display{font-family:'Big Shoulders Display',sans-serif; font-weight:800; letter-spacing:.01em;}
+  a{color:inherit;}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 28px; border-bottom:1px solid var(--line);
+    background:var(--paper);
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--coral);
+    box-shadow:0 0 0 3px var(--coral-soft);}
+  .brand h1{font-size:19px; margin:0; font-family:'Big Shoulders Display',sans-serif; font-weight:800; letter-spacing:.03em; text-transform:uppercase;}
+  .brand span{color:var(--ink-faint); font-size:12px;}
+  .btn{
+    border:1px solid var(--line-strong); background:var(--paper); color:var(--ink);
+    padding:9px 16px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer;
+    font-family:'Inter',sans-serif; transition:.15s;
+  }
+  .btn:hover{background:var(--ink); color:var(--paper);}
+  .btn:focus-visible, select:focus-visible, input:focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
+
+  /* ---------- PAGE 1 : UPLOAD ---------- */
+  #page-upload{max-width:960px; margin:0 auto; padding:64px 24px 96px;}
+  .hero-eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-family:'IBM Plex Mono',monospace;
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--coral);
+    border:1px solid var(--coral); padding:5px 12px; border-radius:999px; background:var(--coral-soft);
+  }
+  .hero h2{
+    font-family:'Big Shoulders Display',sans-serif; font-weight:800; text-transform:uppercase;
+    font-size:clamp(40px,6vw,68px); line-height:.96; margin:18px 0 14px; letter-spacing:.005em;
+  }
+  .hero p{color:var(--ink-muted); font-size:17px; max-width:560px; line-height:1.55; margin:0 0 40px;}
+
+  .dropzone{
+    border:2px dashed var(--line-strong); border-radius:var(--radius); background:var(--paper);
+    padding:48px 28px; text-align:center; cursor:pointer; transition:.15s; box-shadow:var(--shadow);
+  }
+  .dropzone.drag{background:var(--coral-soft); border-color:var(--coral);}
+  .dropzone svg{margin-bottom:14px;}
+  .dropzone h3{margin:0 0 6px; font-size:18px; font-weight:700;}
+  .dropzone p{margin:0; color:var(--ink-faint); font-size:13px;}
+  .dropzone input{display:none;}
+  #file-error{color:var(--coral); font-size:13px; margin-top:14px; font-weight:600; display:none;}
+
+  .spec-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:36px;}
+  .spec-card{
+    background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:16px;
+  }
+  .spec-card .n{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); display:block; margin-bottom:8px;}
+  .spec-card b{display:block; font-size:14px; margin-bottom:4px;}
+  .spec-card span.d{font-size:12.5px; color:var(--ink-muted); line-height:1.4;}
+
+  @media (max-width:760px){ .spec-grid{grid-template-columns:1fr 1fr;} }
+
+  /* ---------- PAGE 2 : DASHBOARD ---------- */
+  #page-dashboard{max-width:1280px; margin:0 auto; padding:28px 24px 80px;}
+
+  .filterbar{
+    display:flex; align-items:flex-end; gap:22px; flex-wrap:wrap;
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 22px; margin-bottom:22px; box-shadow:var(--shadow);
+  }
+  .field{display:flex; flex-direction:column; gap:6px; min-width:220px;}
+  .field label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); font-weight:600;}
+  select{
+    appearance:none; border:1.5px solid var(--line-strong); border-radius:8px; background:var(--paper);
+    padding:10px 34px 10px 12px; font-size:14px; font-family:'Inter',sans-serif; font-weight:500;
+    color:var(--ink); cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%230F1B33'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center;
+  }
+  .field.c1 select{border-color:var(--coral);}
+  .field.c2 select{border-color:var(--teal);}
+  .swatch{width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:7px; vertical-align:middle;}
+  .filterbar .hint{font-size:12px; color:var(--ink-faint); margin-left:auto; max-width:230px; line-height:1.4;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px;}
+  .kpi{
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 20px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  .kpi .label{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); font-weight:700; margin-bottom:10px;}
+  .kpi .val{font-family:'Big Shoulders Display',sans-serif; font-weight:800; font-size:34px; line-height:1;}
+  .kpi .sub{font-size:12px; color:var(--ink-muted); margin-top:6px;}
+  .kpi::after{content:""; position:absolute; right:-10px; top:-10px; width:60px; height:60px; border-radius:50%;
+    background:var(--paper-alt); opacity:.5;}
+
+  .grid{display:grid; grid-template-columns:1.6fr 1fr; gap:16px;}
+  .grid .full{grid-column:1 / -1;}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 22px 16px; box-shadow:var(--shadow);
+  }
+  .card h4{margin:0 0 2px; font-size:14px; font-weight:700;}
+  .card .meta{font-size:11.5px; color:var(--ink-faint); margin-bottom:14px; font-family:'IBM Plex Mono',monospace;}
+  .chart-wrap{position:relative; height:260px;}
+  .chart-wrap.tall{height:300px;}
+
+  /* daypart broadcast strip - signature element */
+  .strip{display:flex; width:100%; height:46px; border-radius:8px; overflow:hidden; border:1px solid var(--line-strong);}
+  .strip .seg{display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff;
+    font-family:'IBM Plex Mono',monospace; min-width:0; white-space:nowrap; overflow:hidden; transition:.2s;}
+  .strip-legend{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px;}
+  .strip-legend .item{font-size:12px;}
+  .strip-legend .item b{display:block; font-size:16px; font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+  .strip-legend .item .lab{color:var(--ink-muted); display:flex; align-items:center; gap:6px;}
+
+  /* publisher leaderboard */
+  .leaderboard{display:flex; flex-direction:column; gap:10px;}
+  .lb-row{display:grid; grid-template-columns:22px 90px 1fr 60px; align-items:center; gap:10px;}
+  .lb-rank{font-family:'Big Shoulders Display',sans-serif; font-weight:800; color:var(--ink-faint); font-size:16px;}
+  .lb-name{font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .lb-bar-bg{background:var(--paper-alt); border-radius:6px; height:10px; overflow:hidden;}
+  .lb-bar{height:100%; background:var(--coral); border-radius:6px;}
+  .lb-pct{font-family:'IBM Plex Mono',monospace; font-size:11.5px; text-align:right; color:var(--ink-muted);}
+
+  .empty-note{font-size:13px; color:var(--ink-faint); text-align:center; padding:40px 0;}
+  #dash-error{display:none; background:var(--coral-soft); border:1px solid var(--coral); color:#8C2A15;
+    padding:12px 16px; border-radius:10px; font-size:13px; margin-bottom:16px;}
+
+  ::selection{background:var(--coral); color:#fff;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span><h1>Panel de Campañas</h1><span>· Media Performance</span></div>
+  <button class="btn" id="btn-reset" style="display:none;">Cambiar archivo</button>
+</div>
+
+<!-- ================= PAGE 1: UPLOAD ================= -->
+<section id="page-upload">
+  <div class="hero">
+    <span class="hero-eyebrow">01 — Carga de datos</span>
+    <h2>Sube tu excel,<br>enciende el panel.</h2>
+    <p>Un archivo, cuatro pestañas de datos (semanas, ad groups, franja horaria y género) y en segundos tienes el dashboard listo para comparar hasta dos campañas.</p>
+  </div>
+
+  <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Subir archivo Excel">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0F1B33" stroke-width="1.6"><path d="M12 3v12m0-12l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    <h3>Arrastra tu archivo .xlsx aquí</h3>
+    <p>o haz clic para seleccionarlo desde tu equipo</p>
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+  </div>
+  <div id="file-error"></div>
+
+  <div class="spec-grid">
+    <div class="spec-card"><span class="n">01</span><b>Semanas</b><span class="d">Impresiones y views por semana. La primera semana con datos siempre se etiqueta "Week 1".</span></div>
+    <div class="spec-card"><span class="n">02</span><b>Publishers</b><span class="d">Se detecta el nombre del publisher dentro del Ad Group y se rankean por impresiones.</span></div>
+    <div class="spec-card"><span class="n">03</span><b>Franja horaria</b><span class="d">Las horas se agrupan en Madrugada, Mañana, Tarde y Noche.</span></div>
+    <div class="spec-card"><span class="n">04</span><b>Género</b><span class="d">Se descartan filas sin género y se muestran los 9 principales + "Otros".</span></div>
+  </div>
+</section>
+
+<!-- ================= PAGE 2: DASHBOARD ================= -->
+<section id="page-dashboard" style="display:none;">
+  <div class="filterbar">
+    <div class="field c1">
+      <label><span class="swatch" style="background:var(--coral)"></span>Campaña 1</label>
+      <select id="sel-camp1"></select>
+    </div>
+    <div class="field c2">
+      <label><span class="swatch" style="background:var(--teal)"></span>Campaña 2 <span style="text-transform:none;font-weight:400;">(opcional)</span></label>
+      <select id="sel-camp2"></select>
+    </div>
+    <div class="hint">Puedes visualizar como máximo 2 campañas a la vez. Los gráficos combinan los datos de las campañas elegidas.</div>
+  </div>
+
+  <div id="dash-error"></div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="label">Impresiones</div><div class="val mono" id="kpi-impr">—</div><div class="sub" id="kpi-impr-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="label">Completed Views</div><div class="val mono" id="kpi-pcv">—</div><div class="sub" id="kpi-pcv-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="label">VCR (Completion Rate)</div><div class="val mono" id="kpi-vcr">—</div><div class="sub">Player Completed Views / Impresiones</div></div>
+    <div class="kpi"><div class="label">Semanas con datos</div><div class="val mono" id="kpi-weeks">—</div><div class="sub" id="kpi-weeks-sub">&nbsp;</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card full">
+      <h4>Evolución semanal</h4>
+      <div class="meta">WEEK 1 = PRIMERA SEMANA CON IMPRESIONES &gt; 0</div>
+      <div class="chart-wrap tall"><canvas id="chart-weekly"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h4>Franja horaria</h4>
+      <div class="meta">% IMPRESIONES POR DAYPART</div>
+      <div id="daypart-strip"></div>
+    </div>
+
+    <div class="card">
+      <h4>Top publishers</h4>
+      <div class="meta">POR IMPRESIONES · TOP 5</div>
+      <div class="leaderboard" id="publisher-list"></div>
+    </div>
+
+    <div class="card full">
+      <h4>Género de contenido</h4>
+      <div class="meta">TOP 9 GÉNEROS + "OTROS" · % SOBRE IMPRESIONES</div>
+      <div class="chart-wrap"><canvas id="chart-genre"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ============================================================
+   PARSING & DATA HELPERS
+   ============================================================ */
+const PUBLISHERS = ['Atresmedia','Disney','Mediaset','Netflix','Pulsa','Rakuten','SamsungTV','Samsung','TitanOs','Tv3','Sky'];
+const PUBLISHER_LABEL = {Samsung:'SamsungTV', Tv3:'TV3', Sky:'SkyShowtime'};
+const DAYPARTS = [
+  {key:'madrugada', label:'Madrugada', range:'01:00–06:00', color:'#0F1B33', test:h=>h>=1&&h<=6},
+  {key:'manana',    label:'Mañana',    range:'07:00–12:00', color:'#0F9E96', test:h=>h>=7&&h<=12},
+  {key:'tarde',     label:'Tarde',     range:'13:00–18:00', color:'#F2A626', test:h=>h>=13&&h<=18},
+  {key:'noche',     label:'Noche',     range:'19:00–00:00', color:'#FF5B3C', test:h=>true},
+];
+
+function norm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+function findCol(headers, keywordsList){
+  // keywordsList: array of arrays of required substrings (any group matches)
+  for(const kws of keywordsList){
+    const hit = headers.find(h => kws.every(k => norm(h).includes(k)));
+    if(hit) return hit;
+  }
+  return null;
+}
+
+function sheetRows(ws){
+  return XLSX.utils.sheet_to_json(ws, {defval:null, raw:true});
+}
+
+function detectSheets(wb){
+  const candidates = wb.SheetNames.filter(n => !/^(graficos|filtro|dashboard)$/i.test(n));
+  let weekly=null, adgroup=null, hourly=null, genre=null;
+  for(const name of candidates){
+    const rows = sheetRows(wb.Sheets[name]);
+    if(!rows.length) continue;
+    const headers = Object.keys(rows[0]);
+    const hasCampaign = findCol(headers,[['campaign']]);
+    if(!hasCampaign) continue;
+    const hasWeek = findCol(headers,[['week']]);
+    const hasHour = findCol(headers,[['hour']]);
+    const hasGenre = findCol(headers,[['genre']]);
+    const hasAdGroup = findCol(headers,[['ad','group']]);
+    if(hasGenre) genre = {name, rows, headers};
+    else if(hasHour) hourly = {name, rows, headers};
+    else if(hasAdGroup) adgroup = {name, rows, headers};
+    else if(hasWeek) weekly = {name, rows, headers};
+  }
+  return {weekly, adgroup, hourly, genre};
+}
+
+function col(rows, headers, keywordsList){
+  const h = findCol(headers, keywordsList);
+  return h;
+}
+
+function extractPublisher(adGroupValue){
+  const s = String(adGroupValue||'');
+  for(const p of PUBLISHERS){
+    if(s.toLowerCase().includes(p.toLowerCase())) return PUBLISHER_LABEL[p]||p;
+  }
+  return null;
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let DATA = null; // {weekly, adgroup, hourly, genre, campaigns[]}
+
+const el = id => document.getElementById(id);
+
+/* ============================================================
+   FILE HANDLING
+   ============================================================ */
+const dropzone = el('dropzone');
+const fileInput = el('file-input');
+const fileError = el('file-error');
+
+dropzone.addEventListener('click', ()=> fileInput.click());
+dropzone.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' ') fileInput.click(); });
+['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); }));
+dropzone.addEventListener('drop', e=>{
+  const f = e.dataTransfer.files[0];
+  if(f) handleFile(f);
+});
+fileInput.addEventListener('change', e=>{
+  if(e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file){
+  fileError.style.display='none';
+  if(typeof XLSX === 'undefined'){
+    fileError.textContent = 'No se pudo cargar la librería de lectura de Excel (XLSX). Revisa tu conexión y recarga la página.';
+    fileError.style.display='block';
+    return;
+  }
+  if(typeof Chart === 'undefined'){
+    fileError.textContent = 'No se pudo cargar la librería de gráficos (Chart.js). Revisa tu conexión y recarga la página.';
+    fileError.style.display='block';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:false});
+      const sheets = detectSheets(wb);
+      if(!sheets.weekly && !sheets.adgroup && !sheets.hourly && !sheets.genre){
+        throw new Error('No se han encontrado pestañas con columna "Campaign" reconocible.');
+      }
+      buildDataset(sheets);
+      showDashboard();
+    }catch(err){
+      fileError.textContent = 'No se pudo leer el archivo: ' + err.message;
+      fileError.style.display='block';
+    }
+  };
+  reader.onerror = ()=>{ fileError.textContent='Error al leer el archivo.'; fileError.style.display='block'; };
+  reader.readAsArrayBuffer(file);
+}
+
+el('btn-reset').addEventListener('click', ()=>{
+  DATA = null;
+  el('page-dashboard').style.display='none';
+  el('page-upload').style.display='block';
+  el('btn-reset').style.display='none';
+  fileInput.value='';
+});
+
+/* ============================================================
+   BUILD DATASET (normalize columns once)
+   ============================================================ */
+function buildDataset(sheets){
+  const campaignSet = new Set();
+  const out = {weekly:[], adgroup:[], hourly:[], genre:[]};
+
+  if(sheets.weekly){
+    const {rows, headers} = sheets.weekly;
+    const cCamp = col(rows,headers,[['campaign']]);
+    const cWeek = col(rows,headers,[['week']]);
+    const cImp  = col(rows,headers,[['impression']]);
+    const cPcv  = col(rows,headers,[['completed']],);
+    rows.forEach(r=>{
+      const camp=r[cCamp]; if(!camp) return;
+      campaignSet.add(camp);
+      out.weekly.push({campaign:camp, week:Number(r[cWeek]), impressions:Number(r[cImp])||0, pcv:Number(r[cPcv])||0});
+    });
+  }
+  if(sheets.adgroup){
+    const {rows, headers} = sheets.adgroup;
+    const cCamp = col(rows,headers,[['campaign']]);
+    const cAdg  = col(rows,headers,[['ad','group']]);
+    const cImp  = col(rows,headers,[['impression']]);
+    rows.forEach(r=>{
+      const camp=r[cCamp]; if(!camp) return;
+      campaignSet.add(camp);
+      out.adgroup.push({campaign:camp, adgroup:r[cAdg], impressions:Number(r[cImp])||0});
+    });
+  }
+  if(sheets.hourly){
+    const {rows, headers} = sheets.hourly;
+    const cCamp = col(rows,headers,[['campaign']]);
+    const cHour = col(rows,headers,[['hour']]);
+    const cImp  = col(rows,headers,[['impression']]);
+    rows.forEach(r=>{
+      const camp=r[cCamp]; if(!camp) return;
+      campaignSet.add(camp);
+      out.hourly.push({campaign:camp, hour:Number(r[cHour]), impressions:Number(r[cImp])||0});
+    });
+  }
+  if(sheets.genre){
+    const {rows, headers} = sheets.genre;
+    const cCamp = col(rows,headers,[['campaign']]);
+    const cGen  = col(rows,headers,[['genre']]);
+    const cImp  = col(rows,headers,[['impression']]);
+    rows.forEach(r=>{
+      const camp=r[cCamp]; if(!camp) return;
+      campaignSet.add(camp);
+      out.genre.push({campaign:camp, genre:r[cGen], impressions:Number(r[cImp])||0});
+    });
+  }
+
+  DATA = {...out, campaigns: Array.from(campaignSet).sort((a,b)=>String(a).localeCompare(String(b)))};
+}
+
+/* ============================================================
+   SHOW DASHBOARD
+   ============================================================ */
+let chartWeekly=null, chartGenre=null;
+if(typeof Chart !== 'undefined'){
+  Chart.defaults.color = '#5B6478';
+  Chart.defaults.borderColor = '#CBD3E0';
+  Chart.defaults.font.family = "'Inter', sans-serif";
+}
+
+function showDashboard(){
+  el('page-upload').style.display='none';
+  el('page-dashboard').style.display='block';
+  el('btn-reset').style.display='inline-block';
+
+  const s1 = el('sel-camp1'), s2 = el('sel-camp2');
+  s1.innerHTML = DATA.campaigns.map(c=>`<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
+  s2.innerHTML = '<option value="">— Ninguna —</option>' + DATA.campaigns.map(c=>`<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
+  if(DATA.campaigns[1]) s2.value = DATA.campaigns[1];
+
+  s1.addEventListener('change', render);
+  s2.addEventListener('change', render);
+  render();
+}
+
+function escHtml(s){ return String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function escAttr(s){ return String(s).replace(/"/g,'&quot;'); }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  const c1 = el('sel-camp1').value;
+  let c2 = el('sel-camp2').value;
+  if(c2 === c1) c2 = ''; // avoid duplicate selection
+  const selected = [c1, c2].filter(Boolean);
+
+  const errBox = el('dash-error');
+  if(!selected.length){
+    errBox.style.display='block';
+    errBox.textContent='Selecciona al menos una campaña para ver el panel.';
+    return;
+  }
+  errBox.style.display='none';
+
+  renderKPIsAndWeekly(selected);
+  renderDaypart(selected);
+  renderPublishers(selected);
+  renderGenre(selected);
+}
+
+function inSel(camp, selected){ return selected.includes(camp); }
+
+/* ---------- Weekly + KPIs ---------- */
+function renderKPIsAndWeekly(selected){
+  const rows = DATA.weekly.filter(r => inSel(r.campaign, selected) && r.impressions > 0);
+  const weeksSorted = Array.from(new Set(rows.map(r=>r.week))).sort((a,b)=>a-b);
+  const weekMap = new Map(weeksSorted.map((w,i)=>[w, i+1]));
+
+  const agg = new Map(); // weekNum -> {impressions, pcv}
+  rows.forEach(r=>{
+    const wn = weekMap.get(r.week);
+    if(!agg.has(wn)) agg.set(wn, {impressions:0, pcv:0});
+    const a = agg.get(wn);
+    a.impressions += r.impressions; a.pcv += r.pcv;
+  });
+  const labels = Array.from(agg.keys()).sort((a,b)=>a-b);
+  const impData = labels.map(w=>agg.get(w).impressions);
+  const pcvData = labels.map(w=>agg.get(w).pcv);
+
+  const totalImp = impData.reduce((a,b)=>a+b,0);
+  const totalPcv = pcvData.reduce((a,b)=>a+b,0);
+  const vcr = totalImp>0 ? (totalPcv/totalImp*100) : 0;
+
+  el('kpi-impr').textContent = totalImp.toLocaleString('es-ES');
+  el('kpi-pcv').textContent = totalPcv.toLocaleString('es-ES');
+  el('kpi-vcr').textContent = vcr.toFixed(1)+'%';
+  el('kpi-weeks').textContent = labels.length;
+  el('kpi-impr-sub').textContent = selected.length>1 ? '2 campañas combinadas' : '1 campaña';
+  el('kpi-pcv-sub').textContent = totalPcv>0 ? 'con reproducción completa' : 'sin video (display)';
+  el('kpi-weeks-sub').textContent = labels.length ? `Week 1 → semana ${weeksSorted[0]}` : '';
+
+  const ctx = document.getElementById('chart-weekly');
+  const cfg = {
+    type:'line',
+    data:{
+      labels: labels.map(w=>'W'+w),
+      datasets:[
+        {label:'Impresiones', data:impData, borderColor:'#FF5B3C', backgroundColor:'#FF5B3C22',
+         tension:.3, fill:true, pointRadius:3, pointBackgroundColor:'#FF5B3C', borderWidth:2.5},
+        {label:'Player Completed Views', data:pcvData, borderColor:'#0F9E96', backgroundColor:'transparent',
+         borderDash:[5,4], tension:.3, pointRadius:3, pointBackgroundColor:'#0F9E96', borderWidth:2.5},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{ legend:{position:'top', align:'end', labels:{boxWidth:10, boxHeight:10, usePointStyle:true, font:{family:'Inter', size:12}}},
+                tooltip:{backgroundColor:'#0F1B33', titleFont:{family:'IBM Plex Mono'}, bodyFont:{family:'Inter'}} },
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{family:'IBM Plex Mono', size:11}}},
+        y:{grid:{color:'#CBD3E0'}, ticks:{font:{family:'IBM Plex Mono', size:11}, callback:v=>v.toLocaleString('es-ES')}}
+      }
+    }
+  };
+  if(chartWeekly){ chartWeekly.data=cfg.data; chartWeekly.update(); }
+  else { chartWeekly = new Chart(ctx, cfg); }
+}
+
+/* ---------- Daypart broadcast strip ---------- */
+function renderDaypart(selected){
+  const rows = DATA.hourly.filter(r => inSel(r.campaign, selected) && r.impressions > 0);
+  const totals = DAYPARTS.map(dp => ({...dp, value:0}));
+  rows.forEach(r=>{
+    const h = r.hour;
+    const dp = totals.find(d => d.key!=='noche' && d.test(h)) || totals.find(d=>d.key==='noche');
+    dp.value += r.impressions;
+  });
+  const sum = totals.reduce((a,b)=>a+b.value,0) || 1;
+
+  const stripHtml = totals.map(d=>{
+    const pct = d.value/sum*100;
+    if(pct<0.5) return '';
+    return `<div class="seg" style="width:${pct}%; background:${d.color};" title="${d.label} ${pct.toFixed(1)}%">${pct>=8? pct.toFixed(0)+'%':''}</div>`;
+  }).join('');
+
+  const legendHtml = totals.map(d=>{
+    const pct = sum? (d.value/sum*100):0;
+    return `<div class="item">
+      <div class="lab"><span class="swatch" style="background:${d.color}"></span>${d.label}</div>
+      <b>${pct.toFixed(1)}%</b>
+      <div style="color:var(--ink-faint); font-size:10.5px;">${d.range}</div>
+    </div>`;
+  }).join('');
+
+  el('daypart-strip').innerHTML = `<div class="strip">${stripHtml}</div><div class="strip-legend">${legendHtml}</div>`;
+}
+
+/* ---------- Publishers leaderboard ---------- */
+function renderPublishers(selected){
+  const rows = DATA.adgroup.filter(r => inSel(r.campaign, selected) && r.impressions > 0);
+  const totals = new Map();
+  rows.forEach(r=>{
+    const pub = extractPublisher(r.adgroup);
+    if(!pub) return;
+    totals.set(pub, (totals.get(pub)||0) + r.impressions);
+  });
+  const sorted = Array.from(totals.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const max = sorted.length ? sorted[0][1] : 1;
+  const grandTotal = Array.from(totals.values()).reduce((a,b)=>a+b,0) || 1;
+
+  if(!sorted.length){
+    el('publisher-list').innerHTML = '<div class="empty-note">No se han identificado publishers en el Ad Group.</div>';
+    return;
+  }
+
+  el('publisher-list').innerHTML = sorted.map(([name,val],i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">${i+1}</div>
+      <div class="lb-name">${escHtml(name)}</div>
+      <div class="lb-bar-bg"><div class="lb-bar" style="width:${(val/max*100).toFixed(1)}%"></div></div>
+      <div class="lb-pct">${(val/grandTotal*100).toFixed(1)}%</div>
+    </div>
+  `).join('');
+}
+
+/* ---------- Genre chart ---------- */
+function renderGenre(selected){
+  const rows = DATA.genre.filter(r => inSel(r.campaign, selected) && r.impressions > 0 && r.genre != null && String(r.genre).trim() !== '');
+  const totals = new Map();
+  rows.forEach(r=>{ totals.set(r.genre, (totals.get(r.genre)||0) + r.impressions); });
+  const sorted = Array.from(totals.entries()).sort((a,b)=>b[1]-a[1]);
+  const top9 = sorted.slice(0,9);
+  const otherSum = sorted.slice(9).reduce((a,[,v])=>a+v,0);
+  const final = [...top9];
+  if(otherSum>0) final.push(['Otros', otherSum]);
+  final.sort((a,b)=>b[1]-a[1]);
+
+  const total = final.reduce((a,[,v])=>a+v,0) || 1;
+  const labels = final.map(([g])=>g);
+  const values = final.map(([,v])=>v);
+  const colors = labels.map(l => l==='Otros' ? '#8C93A4' : '#FF5B3C');
+
+  const ctx = document.getElementById('chart-genre');
+  const cfg = {
+    type:'bar',
+    data:{ labels, datasets:[{ data: values.map(v=>+(v/total*100).toFixed(1)), backgroundColor: colors, borderRadius:4, barThickness:18 }] },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false},
+        tooltip:{callbacks:{label: ctx => ctx.parsed.x + '% · ' + values[ctx.dataIndex].toLocaleString('es-ES') + ' impr.'},
+          backgroundColor:'#0F1B33'} },
+      scales:{
+        x:{grid:{color:'#CBD3E0'}, ticks:{callback:v=>v+'%', font:{family:'IBM Plex Mono', size:11}}},
+        y:{grid:{display:false}, ticks:{font:{family:'Inter', size:12, weight:600}}}
+      }
+    }
+  };
+  if(chartGenre){ chartGenre.data=cfg.data; chartGenre.options=cfg.options; chartGenre.update(); }
+  else { chartGenre = new Chart(ctx, cfg); }
+}
+</script>
+</body>
+</html>
